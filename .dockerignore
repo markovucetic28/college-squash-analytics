@@ -1,0 +1,12 @@
+.venv
+__pycache__
+.pytest_cache
+frontend/node_modules
+frontend/.next
+data/raw
+data/processed/*
+!data/processed/current_season_readiness.json
+data/*.db
+*.log
+.env*
+!.env.example
