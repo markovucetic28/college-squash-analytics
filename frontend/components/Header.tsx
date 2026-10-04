@@ -4,7 +4,7 @@ import DataFreshness from "./DataFreshness";
 
 const links = [
   ["Schedule", "/schedule"], ["Teams", "/teams"], ["Rankings", "/rankings"],
-  ["Compare", "/compare"], ["Methodology", "/methodology"],
+  ["Compare", "/compare"], ["About", "/methodology"],
 ];
 
 export default function Header() {

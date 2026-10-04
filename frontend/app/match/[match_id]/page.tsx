@@ -37,6 +37,6 @@ export default async function MatchPage({ params }: { params: Promise<{ match_id
     {match.historical_meetings.length ? <div className="table-wrap"><table><thead><tr><th>Date</th><th>Season</th><th>Result for {match.team_one}</th><th>Score</th></tr></thead><tbody>
       {match.historical_meetings.map((meeting) => <tr key={`${meeting.date}-${meeting.season}`}><td>{formatDate(meeting.date)}</td><td>{meeting.season}</td><td>{meeting.result}</td><td>{meeting.team_score}–{meeting.opponent_score}</td></tr>)}
     </tbody></table></div> : <p className="muted">No verified meetings in the available coverage.</p>}
-    <p className="projection-note"><Link href="/methodology">How these estimates are calculated →</Link></p>
+    <p className="projection-note"><Link href="/methodology">About the project →</Link></p>
   </>;
 }

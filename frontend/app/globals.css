@@ -116,6 +116,7 @@ td small { display:block; color:var(--muted); font-size:10px; margin-top:2px; }
 .tabs a.active { background:var(--navy); color:white; }
 .methodology { max-width:780px; }
 .methodology section { border-top:1px solid var(--line); padding:4px 0 14px; }
+.about-list { display:grid; gap:10px; padding-left:22px; }
 .chart { width:100%; height:auto; min-height:240px; background:white; border:1px solid var(--line); }
 .chart polyline { fill:none; stroke:var(--accent); stroke-width:2; }
 .chart line { stroke:#e2e6e9; stroke-width:1; }
