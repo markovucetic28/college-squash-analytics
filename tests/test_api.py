@@ -64,6 +64,8 @@ def test_team_detail_contains_current_roster_only():
     assert payload["name"] == "Harvard University"
     assert payload["roster"]
     assert all(player["rating_date"] and player["player_id"] for player in payload["roster"])
+    assert all(player["recent_form"]["state"] in {"above", "expected", "below", "limited"}
+               for player in payload["roster"])
 
 
 def test_player_profile_supports_current_only_newcomers():
@@ -109,6 +111,9 @@ def test_match_detail_has_bounded_player_prediction_and_current_roster_players()
     assert 0 <= projection["team_one_probability"] <= 1
     assert 0 <= projection["team_two_probability"] <= 1
     assert len(projection["pairings"]) == 9
+    assert all(pairing["team_one_recent_form"]["label"]
+               and pairing["team_two_recent_form"]["label"]
+               for pairing in projection["pairings"])
 
     first_id = next(team["program_id"] for team in teams
                     if team["name"] == fixture["away_team"] and team["gender"] == fixture["gender"])

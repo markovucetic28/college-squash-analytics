@@ -12,12 +12,19 @@ export type Summary = {
   average_margin: number; average_team_score: number;
 };
 
+export type RecentForm = {
+  state: "above" | "expected" | "below" | "limited";
+  label: string; description: string; score: number | null; matches: number;
+};
+
 export type Pairing = {
   position: number;
   team_one_player_id: number | null; team_one_player: string; team_one_rating: number | null;
   team_one_rating_date: string | null; team_one_is_forfeit: boolean; team_one_probability: number;
+  team_one_recent_form?: RecentForm | null;
   team_two_player_id: number | null; team_two_player: string; team_two_rating: number | null;
   team_two_rating_date: string | null; team_two_is_forfeit: boolean;
+  team_two_recent_form?: RecentForm | null;
 };
 
 export type Projection = {

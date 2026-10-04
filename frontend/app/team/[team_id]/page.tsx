@@ -3,8 +3,10 @@ import StatStrip from "@/components/StatStrip";
 import EloLabel from "@/components/EloLabel";
 import { apiFetch, formatDate, number, percent, record } from "@/lib/api";
 import type { Fixture, Summary } from "@/lib/types";
+import type { RecentForm } from "@/lib/types";
+import RecentFormDot from "@/components/RecentFormDot";
 
-type RosterPlayer = { player_id:number; display_name:string; current_rating:number; rating_date:string; projected_position?:number; career_wins:number; career_matches:number };
+type RosterPlayer = { player_id:number; display_name:string; current_rating:number; rating_date:string; projected_position?:number; career_wins:number; career_matches:number; recent_form?:RecentForm };
 type TeamDetail = {
   program_id:number; name:string; gender:string; season:string; elo:number; strength_of_schedule:number|null;
   current_season:(Summary & {elo:number;strength_of_schedule:number})|null; previous_season:Summary|null; historical_record:Summary|null; lineup_confidence:number;
@@ -24,9 +26,9 @@ export default async function TeamPage({ params }: { params: Promise<{ team_id: 
       {label:"Average margin",value:team.current_season ? number(team.current_season.average_margin) : "—"},
       {label:"Historical record",value:record(team.historical_record)},
     ]}/>
-    <div className="section-bar"><h2>Current official roster</h2><span>Projected order confidence {percent(team.lineup_confidence,0)}</span></div>
-    <div className="table-wrap"><table><thead><tr><th>Projected pos.</th><th>Player</th><th>Latest rating</th><th>Rating date</th><th>Verified college record</th></tr></thead><tbody>
-      {team.roster.map((player) => <tr key={player.player_id}><td>{player.projected_position || "—"}</td><td><Link href={`/player/${player.player_id}`}>{player.display_name}</Link></td><td>{number(player.current_rating,2)}</td><td>{player.rating_date}</td><td>{player.career_wins}–{player.career_matches-player.career_wins}</td></tr>)}
+    <div className="section-bar"><h2>Current official roster</h2><span title="Lineup confidence estimates how strongly official roster ratings and prior lineup evidence support this projected order. It is not match-win confidence or an official CSA value.">Projected order confidence {percent(team.lineup_confidence,0)} ⓘ</span></div>
+    <div className="table-wrap"><table><thead><tr><th>Projected pos.</th><th>Player</th><th title="Official player rating from Club Locker.">Latest rating ⓘ</th><th>Recent form</th><th>Rating date</th><th>Verified college record</th></tr></thead><tbody>
+      {team.roster.map((player) => <tr key={player.player_id}><td>{player.projected_position || "—"}</td><td><Link href={`/player/${player.player_id}`}>{player.display_name}</Link></td><td>{number(player.current_rating,2)}</td><td><RecentFormDot form={player.recent_form}/></td><td>{player.rating_date}</td><td>{player.career_wins}–{player.career_matches-player.career_wins}</td></tr>)}
     </tbody></table></div>
     <div className="section-bar"><h2>2026–27 schedule</h2><span>{team.schedule.length} fixtures</span></div>
     <div className="table-wrap"><table><thead><tr><th>Date</th><th>Opponent</th><th>Location</th><th>Status</th></tr></thead><tbody>{team.schedule.map((match) => <tr key={match.source_match_id}><td><Link href={`/match/${match.source_match_id}`}>{formatDate(match.match_date)}</Link></td><td>{match.home_team===team.name ? match.away_team : match.home_team}</td><td>{match.venue_name||"TBD"}</td><td>{match.status}</td></tr>)}</tbody></table></div>

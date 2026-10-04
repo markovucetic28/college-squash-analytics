@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { formatDate } from "@/lib/api";
 import type { Fixture } from "@/lib/types";
+import ScheduleProbability from "./ScheduleProbability";
 
 export default function ScheduleBrowser({ fixtures }: { fixtures: Fixture[] }) {
   const [gender, setGender] = useState("all");
@@ -19,6 +20,7 @@ export default function ScheduleBrowser({ fixtures }: { fixtures: Fixture[] }) {
     (!start || match.match_date >= start) && (!end || match.match_date <= end)
   );
   const groups = Map.groupBy(filtered, (match) => match.match_date);
+  const today = new Date().toLocaleDateString("en-CA", {timeZone:"America/New_York"});
 
   return <>
     <div className="filters">
@@ -29,14 +31,15 @@ export default function ScheduleBrowser({ fixtures }: { fixtures: Fixture[] }) {
       <label>Through<input type="date" value={end} onChange={(event) => setEnd(event.target.value)} /></label>
     </div>
     <div className="section-bar"><h2>Season fixtures</h2><span>{filtered.length} matches</span></div>
+    {filtered.length===0&&<p className="muted">No fixtures match these filters.</p>}
     {[...groups.entries()].map(([date, matches]) => <section className="date-group" key={date}>
-      <h3>{formatDate(date)}</h3>
+      <h3>{date===today?`Today · ${formatDate(date)}`:formatDate(date)}</h3>
       {matches.map((match) => <Link className="fixture-row" href={`/match/${match.source_match_id}`} key={match.source_match_id}>
         <div className="meta">{match.match_time || "Time TBD"}</div>
         <div className="teams"><span>{match.away_team}</span><span>{match.home_team}</span></div>
         <div><span className="badge">{match.gender}</span></div>
         <div className="venue">{match.venue_name || "Location TBD"}</div>
-        <div><span className={`badge ${match.projection_available ? "accent" : ""}`}>{match.projection_available ? "Projection" : "Team only"}</span></div>
+        <div>{match.status.toLowerCase()!=="scheduled" ? <span className="badge">Completed</span> : match.projection_available ? <ScheduleProbability matchId={match.source_match_id} awayTeam={match.away_team} homeTeam={match.home_team}/> : <span className="badge">Team only</span>}</div>
       </Link>)}
     </section>)}
   </>;

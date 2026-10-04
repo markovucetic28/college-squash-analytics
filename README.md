@@ -2,6 +2,10 @@
 
 Python project for collecting, validating, storing, and exploring varsity college squash team results. The current database covers six completed CSA seasons from 2019–20 through 2025–26, with the missing 2020–21 season documented rather than inferred.
 
+The production prediction artifacts are currently frozen. Later point-dominance,
+close-match, uncertainty, and gender-model experiments remain local research
+candidates and are not loaded by the API. See `docs/RESEARCH.md` for the inventory.
+
 ## Coverage
 
 | Season | Men's varsity teams | Women's varsity teams | Verified matches |
@@ -144,6 +148,11 @@ Foreign keys, score checks, program/division uniqueness, source-ID uniqueness, n
 
 - **Record and win percentage:** confirmed wins divided by confirmed matches in the selected season or program-history scope.
 - **Recent form:** the five most recent verified results in the selected scope.
+- **Player recent-form indicator:** descriptive average performance versus the
+  frozen official-rating model's pre-match expectation over up to five rated
+  matches. At least three matches are required. Scores of +0.10 or higher are
+  shown as above expectations, −0.10 or lower as below expectations, and values
+  between them as broadly expected. This indicator never changes predictions.
 - **Average margin:** mean team score minus opponent score.
 - **Strength of schedule:** mean season win percentage of every opponent faced, counting repeat opponents once per match. Program-history SOS is the match-weighted mean of season-specific SOS values.
 - **Head-to-head:** confirmed meetings between two stable program identities, optionally filtered to one season.
@@ -206,6 +215,15 @@ are combined with the exact Poisson-binomial calculation already used by the
 validated lineup model. This supports preseason projections for 396 fixtures
 (223 men’s and 173 women’s). Each result is labeled **Preseason projection** and
 is not presented as a confirmed lineup.
+
+Prediction modes are labeled explicitly: verified lineups use an actual official
+lineup; projected lineups use recent official lineup evidence; preseason
+projections use the current roster, current ratings, and prior lineup evidence;
+team-only estimates are used when a playable player lineup is unavailable.
+
+The status endpoint and site header expose the last successful refresh, schedule
+and rating timestamps when available, and a compact prediction-data readiness
+message. Internal errors, paths, and stack traces are not shown publicly.
 
 Recreate the small production artifact without changing the model methodology:
 

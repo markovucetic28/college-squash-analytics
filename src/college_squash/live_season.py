@@ -206,6 +206,27 @@ def status_payload(connection):
         "SELECT COUNT(*) FROM (SELECT source_match_id FROM live_individual_matches "
         "GROUP BY source_match_id HAVING COUNT(*)=9)"
     ).fetchone()[0]
+    incomplete_scorecards = connection.execute("""
+        SELECT COUNT(*) FROM live_matches match
+        WHERE match.season=? AND match.status='completed'
+          AND (SELECT COUNT(*) FROM live_individual_matches individual
+               WHERE individual.source_match_id=match.source_match_id) <> 9
+    """, (CURRENT_SEASON,)).fetchone()[0]
+    most_recent_completed = connection.execute(
+        "SELECT MAX(match_date) FROM live_matches WHERE season=? AND status='completed'",
+        (CURRENT_SEASON,),
+    ).fetchone()[0]
+    failed_scorecards = connection.execute(
+        "SELECT COUNT(*) FROM live_matches WHERE season=? AND status='excluded'",
+        (CURRENT_SEASON,),
+    ).fetchone()[0]
+    try:
+        stale_ratings = connection.execute("""
+            SELECT COUNT(*) FROM current_roster_players
+            WHERE season=? AND date(rating_date) < date('now','-45 day')
+        """, (CURRENT_SEASON,)).fetchone()[0]
+    except sqlite3.OperationalError:
+        stale_ratings = 0
     summary = json.loads(last["summary_json"]) if last else {}
     try:
         short_rosters = [dict(row) for row in connection.execute("""
@@ -226,6 +247,14 @@ def status_payload(connection):
         "completed_team_matches": counts.get("completed_team_matches") or 0,
         "remaining_scheduled_fixtures": counts.get("remaining_scheduled_fixtures") or 0,
         "complete_scorecards": complete_scorecards,
+        "incomplete_scorecards": incomplete_scorecards,
+        "failed_scorecards": failed_scorecards,
+        "most_recent_completed_match_date": most_recent_completed,
+        "stale_rating_count": stale_ratings,
+        "prediction_data_status": (
+            "Current ratings and schedule available"
+            if not stale_ratings else f"{stale_ratings} roster ratings may be stale"
+        ),
         "teams_with_lineup_evidence": summary.get("teams_with_lineup_evidence", 0),
         "teams_ready_for_projected_mode": summary.get("projected_ready_teams", 0),
         "short_roster_count": len(short_rosters),

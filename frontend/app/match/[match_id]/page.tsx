@@ -4,6 +4,7 @@ import StatStrip from "@/components/StatStrip";
 import EloLabel from "@/components/EloLabel";
 import { apiFetch, formatDate, number, percent, record } from "@/lib/api";
 import type { Projection, Summary } from "@/lib/types";
+import ShareMatchButton from "@/components/ShareMatchButton";
 
 type Context = { previous_season: Summary | null; historical_record: Summary | null; strength_of_schedule: number | null; elo: number };
 type Match = {
@@ -21,7 +22,7 @@ export default async function MatchPage({ params }: { params: Promise<{ match_id
   return <>
     <p className="eyebrow">{match.gender} · upcoming fixture</p>
     <h1>{match.team_one_id ? <Link href={`/team/${match.team_one_id}`}>{match.team_one}</Link> : match.team_one} <span className="muted">at</span> {match.team_two_id ? <Link href={`/team/${match.team_two_id}`}>{match.team_two}</Link> : match.team_two}</h1>
-    <p className="lede">{formatDate(match.match_date)}{match.match_time ? ` · ${match.match_time}` : ""} · {match.venue_name || "Location TBD"}</p>
+    <p className="lede">{formatDate(match.match_date)}{match.match_time ? ` · ${match.match_time}` : ""} · {match.venue_name || "Location TBD"}</p><ShareMatchButton />
     <LineupScenario projection={match.projection} teamOne={match.team_one} teamTwo={match.team_two} teamOneId={match.team_one_id} teamTwoId={match.team_two_id} />
     <h2>Team context</h2>
     <div className="two-column">{[match.team_one, match.team_two].map((team, index) => <section key={team}>

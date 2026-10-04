@@ -1,34 +1,21 @@
 import Link from "next/link";
 import { displayProbability, number, percent } from "@/lib/api";
-import type { Projection } from "@/lib/types";
+import { probabilitySegments, teamColor } from "@/lib/teamColors";
+import type { Pairing, Projection } from "@/lib/types";
+import RecentFormDot from "./RecentFormDot";
+import { predictionModeExplanation } from "@/lib/presentation";
 
-export default function ProjectionView({ projection, teamOne, teamTwo }: {
-  projection: Projection; teamOne: string; teamTwo: string;
-}) {
-  if (!projection.available || !projection.pairings) {
-    return <section className="notice"><strong>{projection.mode}</strong>
-      {projection.team_one_probability != null && <p>Projected win probability: {teamOne} {displayProbability(projection.team_one_probability)} · {teamTwo} {displayProbability(projection.team_two_probability)}</p>}
-      <p>{projection.note}</p></section>;
-  }
-  return <>
-    <section className="prediction-summary">
-      <div><span>{teamOne}</span><small>Projected win probability</small><strong>{displayProbability(projection.team_one_probability)}</strong><small>{number(projection.team_one_expected_wins)} expected wins</small></div>
-      <div className="prediction-mode"><b>{projection.mode_label || projection.mode}</b><span>Lineup confidence {percent(projection.lineup_confidence, 0)}</span>{projection.data_timestamp && <span>Data through {projection.data_timestamp.slice(0,10)}</span>}</div>
-      <div className="right"><span>{teamTwo}</span><small>Projected win probability</small><strong>{displayProbability(projection.team_two_probability)}</strong><small>{number(projection.team_two_expected_wins)} expected wins</small></div>
-    </section>
-    <p className="projection-note">{projection.note}</p>
-    <div className="table-wrap pairing-table">
-      <table>
-        <thead><tr><th>Pos</th><th>{teamOne}</th><th>Rating</th><th>{teamOne} win probability</th><th>{teamTwo}</th><th>Rating</th></tr></thead>
-        <tbody>{projection.pairings.map((pairing) => <tr key={pairing.position}>
-          <td className="position">{pairing.position}</td>
-          <td>{pairing.team_one_is_forfeit ? <strong>Forfeit</strong> : <><Link href={`/player/${pairing.team_one_player_id}`}>{pairing.team_one_player}</Link><small>Rating {pairing.team_one_rating_date}</small></>}</td>
-          <td>{number(pairing.team_one_rating, 2)}</td>
-          <td><div className={`probability-cell ${Math.abs(pairing.team_one_probability-.5)<.1 ? "close" : ""}`}><span style={{ width: `${pairing.team_one_probability * 100}%` }} />{teamOne}: {displayProbability(pairing.team_one_probability)}</div></td>
-          <td>{pairing.team_two_is_forfeit ? <strong>Forfeit</strong> : <><Link href={`/player/${pairing.team_two_player_id}`}>{pairing.team_two_player}</Link><small>Rating {pairing.team_two_rating_date}</small></>}</td>
-          <td>{number(pairing.team_two_rating, 2)}</td>
-        </tr>)}</tbody>
-      </table>
-    </div>
-  </>;
+function Player({id,name,forfeit}:{id:number|null;name:string;forfeit:boolean}) { if(forfeit)return <strong>Forfeit</strong>; return id?<Link href={`/player/${id}`}>{name}</Link>:<span>{name}</span>; }
+
+function ProbabilityBar({probability,teamOne,teamTwo}:{probability:number;teamOne:string;teamTwo:string}) { const segments=probabilitySegments(probability); return <div className="pairing-probability" aria-label={`${teamOne} ${displayProbability(probability)}, ${teamTwo} ${displayProbability(1-probability)}`}><div className="pairing-probability-labels"><span>{displayProbability(probability)}</span><span>{displayProbability(1-probability)}</span></div><div className="directional-bar"><span className="bar-left" style={{width:segments.left,backgroundColor:teamColor(teamOne)}}/><i/><span className="bar-right" style={{width:segments.right,backgroundColor:teamColor(teamTwo)}}/></div></div>; }
+
+function MobilePairing({pairing,teamOne,teamTwo}:{pairing:Pairing;teamOne:string;teamTwo:string}) { return <article className="pairing-card"><div className="pairing-card-position">Position {pairing.position}</div><div className="pairing-card-players"><div><Player id={pairing.team_one_player_id} name={pairing.team_one_player} forfeit={pairing.team_one_is_forfeit}/><span>{number(pairing.team_one_rating,2)}</span><RecentFormDot form={pairing.team_one_recent_form}/></div><div className="right"><Player id={pairing.team_two_player_id} name={pairing.team_two_player} forfeit={pairing.team_two_is_forfeit}/><span>{number(pairing.team_two_rating,2)}</span><RecentFormDot form={pairing.team_two_recent_form}/></div></div><ProbabilityBar probability={pairing.team_one_probability} teamOne={teamOne} teamTwo={teamTwo}/></article>; }
+
+export default function ProjectionView({projection,teamOne,teamTwo}:{projection:Projection;teamOne:string;teamTwo:string}) {
+  if(!projection.available||!projection.pairings)return <section className="notice"><strong>{projection.mode}</strong>{projection.team_one_probability!=null&&<p>Projected win probability: {teamOne} {displayProbability(projection.team_one_probability)} · {teamTwo} {displayProbability(projection.team_two_probability)}</p>}<p>{projection.note}</p></section>;
+  const probabilityHelp="Overall probability is calculated from the nine individual matchup probabilities and the chance of winning at least five positions. Expected wins is the sum of the nine individual win probabilities.";
+  const confidenceHelp=projection.mode==="preseason"?"Preseason lineup confidence reflects current roster ratings and previous official lineup evidence. It is not match-win confidence or an official CSA value.":"Lineup confidence estimates how strongly recent official lineup evidence supports this projected order. It is not match-win confidence or an official CSA value.";
+  const overall=probabilitySegments(projection.team_one_probability??.5);
+  return <><section className="prediction-summary"><div><span>{teamOne}</span><small title={probabilityHelp}>Projected win probability ⓘ</small><strong>{displayProbability(projection.team_one_probability)}</strong><small>{number(projection.team_one_expected_wins)} expected wins</small></div><div className="prediction-mode"><b title={predictionModeExplanation(projection.mode)}>{projection.mode_label||projection.mode} ⓘ</b><span title={confidenceHelp}>Lineup confidence {percent(projection.lineup_confidence,0)} ⓘ</span>{projection.data_timestamp&&<span>Data through {projection.data_timestamp.slice(0,10)}</span>}</div><div className="right"><span>{teamTwo}</span><small title={probabilityHelp}>Projected win probability ⓘ</small><strong>{displayProbability(projection.team_two_probability)}</strong><small>{number(projection.team_two_expected_wins)} expected wins</small></div><div className="overall-probability-bar" aria-label={`${teamOne} ${displayProbability(projection.team_one_probability)}, ${teamTwo} ${displayProbability(projection.team_two_probability)}`}><span style={{width:overall.left,backgroundColor:teamColor(teamOne)}}/><span style={{width:overall.right,backgroundColor:teamColor(teamTwo)}}/></div></section><p className="projection-note">{projection.note}</p>
+  <div className="table-wrap pairing-table desktop-pairings"><table><thead><tr><th>Pos</th><th>Form</th><th>{teamOne}</th><th>Rating</th><th className="center">Matchup probability</th><th>Rating</th><th>{teamTwo}</th><th>Form</th></tr></thead><tbody>{projection.pairings.map((pairing)=><tr key={pairing.position}><td className="position">{pairing.position}</td><td><RecentFormDot form={pairing.team_one_recent_form}/></td><td><Player id={pairing.team_one_player_id} name={pairing.team_one_player} forfeit={pairing.team_one_is_forfeit}/>{pairing.team_one_rating_date&&<small>Rating {pairing.team_one_rating_date}</small>}</td><td>{number(pairing.team_one_rating,2)}</td><td><ProbabilityBar probability={pairing.team_one_probability} teamOne={teamOne} teamTwo={teamTwo}/></td><td>{number(pairing.team_two_rating,2)}</td><td><Player id={pairing.team_two_player_id} name={pairing.team_two_player} forfeit={pairing.team_two_is_forfeit}/>{pairing.team_two_rating_date&&<small>Rating {pairing.team_two_rating_date}</small>}</td><td><RecentFormDot form={pairing.team_two_recent_form}/></td></tr>)}</tbody></table></div><div className="mobile-pairings" aria-hidden="true">{projection.pairings.map((pairing)=><MobilePairing key={pairing.position} pairing={pairing} teamOne={teamOne} teamTwo={teamTwo}/>)}</div></>;
 }

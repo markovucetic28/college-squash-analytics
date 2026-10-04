@@ -25,6 +25,7 @@ from college_squash.preseason import (
     CURRENT_SEASON, current_roster, predict_current_season_matchup,
     predict_preseason_matchup, preseason_lineup, custom_lineup, predict_lineups,
 )
+from college_squash.recent_form import recent_form_by_player
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -165,6 +166,7 @@ def projection_payload(connection, team_one, team_two, gender):
                      "estimate is shown when both programs have verified history."),
         }
     probability = float(result["team_one_probability"])
+    result["pairings"] = add_pairing_recent_form(connection, result["pairings"])
     decision = prediction_mode(current_lineups=3, lineup_confidence=float(result["lineup_confidence"])) if live_mode else prediction_mode(preseason_available=True)
     return {
         "mode": decision["mode"], "mode_label": result["mode"],
@@ -199,6 +201,35 @@ def current_data_timestamp():
     return json.loads(path.read_text(encoding="utf-8")).get("retrieved_at_utc")
 
 
+@lru_cache(maxsize=4)
+def current_recent_form_cache(data_timestamp):
+    """Refresh the descriptive roster-form cache when the live data timestamp changes."""
+    with connect_database(DATABASE_PATH) as connection:
+        ids = [row[0] for row in connection.execute(
+            "SELECT DISTINCT player_id FROM current_roster_players WHERE season=?",
+            (CURRENT_SEASON,),
+        )]
+        return recent_form_by_player(connection, player_model(), ids)
+
+
+def recent_forms(connection, player_ids):
+    requested = {int(player_id) for player_id in player_ids if pd.notna(player_id)}
+    cache = current_recent_form_cache(current_data_timestamp())
+    missing = requested - cache.keys()
+    return {**{player_id: cache[player_id] for player_id in requested if player_id in cache},
+            **recent_form_by_player(connection, player_model(), missing)}
+
+
+def add_pairing_recent_form(connection, pairings):
+    """Attach descriptive form in one batch; prediction inputs remain unchanged."""
+    player_ids = list(pairings["team_one_player_id"]) + list(pairings["team_two_player_id"])
+    form = recent_forms(connection, player_ids)
+    pairings = pairings.copy()
+    pairings["team_one_recent_form"] = pairings["team_one_player_id"].map(form)
+    pairings["team_two_recent_form"] = pairings["team_two_player_id"].map(form)
+    return pairings
+
+
 class CustomLineupRequest(BaseModel):
     team_one_id: int
     team_two_id: int
@@ -228,6 +259,7 @@ def custom_lineup_projection(request: CustomLineupRequest):
             player_model(), first_lineup, second_lineup, 1.0, 1.0,
             "Custom lineup scenario",
         )
+        result["pairings"] = add_pairing_recent_form(connection, result["pairings"])
     probability = float(result["team_one_probability"])
     return {
         "mode": "custom", "mode_label": "Custom scenario", "available": True,
@@ -361,6 +393,8 @@ def team_detail(team_id: int):
         if not roster.empty:
             roster["projected_position"] = roster["player_id"].map(positions)
             roster["verified_losses"] = roster["career_matches"] - roster["career_wins"]
+            form = recent_forms(connection, roster["player_id"])
+            roster["recent_form"] = roster["player_id"].map(form)
         fixtures = scheduled_matches(connection, gender, name)
         history = season_history(connection, name, gender, LATEST_COMPLETE_SEASON)
         seasons = season_by_season_summary(connection, name, gender)
@@ -434,6 +468,7 @@ def player_detail(player_id: int):
             latest_rating = {"rating": float(latest["rating"]),
                              "date": latest["date"].strftime("%Y-%m-%d")}
         wins = int((matches["result"] == "W").sum()) if not matches.empty else 0
+        recent_form = recent_forms(connection, [player_id])[player_id]
         match_records = records(matches.head(50))
         for match in match_records:
             match["opponent"] = display_player_name(match["opponent"])
@@ -447,6 +482,7 @@ def player_detail(player_id: int):
                 membership_records[0] if membership_records else None
             ),
             "projected_position": projected_position,
+            "recent_form": recent_form,
             "latest_rating": latest_rating,
             "verified_record": {"wins": wins, "losses": len(matches) - wins,
                                 "matches": len(matches)},
@@ -511,6 +547,19 @@ def methodology_summary():
         "rating_rule": "Historical ratings must satisfy rating_date < match_date.",
         "modes": ["Verified lineup", "Projected lineup", "Preseason projection",
                   "Team-only fallback"],
+        "mode_definitions": {
+            "Verified lineup": "Actual official lineup is known.",
+            "Projected lineup": "Lineup inferred from recent official lineup evidence.",
+            "Preseason projection": "Current roster ratings and prior lineup evidence are used.",
+            "Team-only fallback": "Player-level lineup prediction is unavailable, so the team model is used.",
+        },
+        "production_model": "The validated production model is frozen. Research candidates are evaluated separately and are not live.",
+        "recent_form": (
+            "Recent form is descriptive only. It averages performance versus pre-match "
+            "official-rating expectations over up to five rated matches, requires at least "
+            "three, and does not change prediction probabilities."
+        ),
+        "freshness": "Schedule, scorecard, roster, and rating refresh status is available from the status service.",
         "external_results": {
             "team_model_accuracy": 0.784,
             "verified_lineup_accuracy": 0.896,
