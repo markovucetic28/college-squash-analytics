@@ -237,6 +237,60 @@ class CustomLineupRequest(BaseModel):
     team_two_lineup: list[int | None]
 
 
+class SchedulePredictionRequest(BaseModel):
+    match_ids: list[int]
+
+
+_schedule_prediction_cache = {}
+
+
+def clear_schedule_prediction_cache():
+    """Clear request-time fixture summaries after live data changes."""
+    _schedule_prediction_cache.clear()
+
+
+def schedule_prediction_summary(connection, fixture, data_timestamp):
+    match_id = int(fixture["source_match_id"])
+    cache_key = (match_id, data_timestamp, MODEL_VERSION, FEATURE_VERSION)
+    if cache_key not in _schedule_prediction_cache:
+        projection = projection_payload(
+            connection, fixture["away_team"], fixture["home_team"], fixture["gender"]
+        )
+        _schedule_prediction_cache[cache_key] = {
+            "match_id": match_id,
+            "available": bool(projection.get("team_one_probability") is not None),
+            "team_one_probability": projection.get("team_one_probability"),
+            "team_two_probability": projection.get("team_two_probability"),
+            "mode": projection.get("mode"),
+            "mode_label": projection.get("mode_label"),
+        }
+        if len(_schedule_prediction_cache) > 1000:
+            oldest = next(iter(_schedule_prediction_cache))
+            _schedule_prediction_cache.pop(oldest)
+    return _schedule_prediction_cache[cache_key]
+
+
+@app.post("/api/schedule/predictions")
+def schedule_predictions(request: SchedulePredictionRequest):
+    match_ids = list(dict.fromkeys(request.match_ids))
+    if not match_ids:
+        return {"items": []}
+    if len(match_ids) > 40:
+        raise HTTPException(422, "A schedule prediction batch may contain at most 40 matches")
+    placeholders = ",".join("?" for _ in match_ids)
+    with connect_database(DATABASE_PATH) as connection:
+        fixtures = connection.execute(
+            f"SELECT * FROM scheduled_matches WHERE source_match_id IN ({placeholders})",
+            tuple(match_ids),
+        ).fetchall()
+        found = {int(row["source_match_id"]): row for row in fixtures}
+        items = [
+            schedule_prediction_summary(connection, found[match_id], current_data_timestamp())
+            for match_id in match_ids if match_id in found
+        ]
+    return {"items": items}
+
+
 @app.post("/api/compare/custom-lineup")
 def custom_lineup_projection(request: CustomLineupRequest):
     if request.team_one_id == request.team_two_id:

@@ -8,7 +8,8 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from college_squash.api import app, cors_origins
+import college_squash.api as api_module
+from college_squash.api import app, clear_schedule_prediction_cache, cors_origins
 
 
 client = TestClient(app)
@@ -165,3 +166,34 @@ def test_compare_preserves_team_a_orientation_when_teams_are_reversed():
             mit["projection"]["pairings"],
         )
     )
+
+
+def test_fordham_st_lawrence_projection_reconstructs_exactly():
+    projection = client.get("/api/matches/253544").json()["projection"]
+    first = projection["pairings"][0]
+    assert first["team_one_player"] == "Cukierman, Nathan"
+    assert first["team_two_player"] == "Yousef, Mina"
+    assert first["team_one_rating"] == pytest.approx(6.195701)
+    assert first["team_two_rating"] == pytest.approx(6.322927)
+    assert first["team_one_probability"] == pytest.approx(0.2985532711908701)
+    assert projection["team_one_probability"] == pytest.approx(0.18783951715954283)
+    assert projection["team_one_probability"] + projection["team_two_probability"] == pytest.approx(1)
+    assert sum(projection["team_one_score_distribution"]) == pytest.approx(1)
+
+
+def test_schedule_prediction_batch_is_cached_and_timestamp_invalidates(monkeypatch):
+    clear_schedule_prediction_cache()
+    calls = []
+    monkeypatch.setattr(api_module, "current_data_timestamp", lambda: "first")
+    monkeypatch.setattr(api_module, "projection_payload", lambda *args: (
+        calls.append(1) or {"team_one_probability": .6, "team_two_probability": .4,
+                            "mode": "preseason", "mode_label": "Preseason projection"}
+    ))
+    request = {"match_ids": [253544]}
+    assert client.post("/api/schedule/predictions", json=request).status_code == 200
+    assert client.post("/api/schedule/predictions", json=request).status_code == 200
+    assert len(calls) == 1
+    monkeypatch.setattr(api_module, "current_data_timestamp", lambda: "second")
+    assert client.post("/api/schedule/predictions", json=request).status_code == 200
+    assert len(calls) == 2
+    clear_schedule_prediction_cache()

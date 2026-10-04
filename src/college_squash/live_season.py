@@ -239,6 +239,23 @@ def status_payload(connection):
         """, (CURRENT_SEASON,))]
     except sqlite3.OperationalError:
         short_rosters = []
+    try:
+        shadow_counts=dict(connection.execute("""SELECT COUNT(*) shadow_snapshots,
+          COUNT(DISTINCT fixture_id) shadow_fixtures,MAX(generated_at_utc) latest_shadow_prediction
+          FROM shadow_prediction_snapshots""").fetchone())
+        production_snapshots=connection.execute("SELECT COUNT(*) FROM prediction_snapshots").fetchone()[0]
+        evaluable=connection.execute("""SELECT COUNT(DISTINCT snapshot.fixture_id)
+          FROM shadow_prediction_snapshots snapshot JOIN live_matches match
+          ON match.source_match_id=snapshot.fixture_id WHERE match.status='completed'
+          AND datetime(snapshot.generated_at_utc) < datetime(match.match_date)""").fetchone()[0]
+        from college_squash.shadow_evaluation import SHADOW_VERSION, artifact_hash
+        shadow_status={"production_snapshots":production_snapshots,**shadow_counts,
+          "completed_evaluable_matches":evaluable,"evaluation_team_sample_size":evaluable,
+          "model_version":SHADOW_VERSION,"model_hash":artifact_hash()}
+    except sqlite3.OperationalError:
+        shadow_status={"production_snapshots":0,"shadow_snapshots":0,"shadow_fixtures":0,
+          "latest_shadow_prediction":None,"completed_evaluable_matches":0,
+          "evaluation_team_sample_size":0,"model_version":"simplified-two-stage-v1","model_hash":None}
     return {
         "current_season": CURRENT_SEASON,
         "last_successful_refresh": last["completed_at_utc"] if last else None,
@@ -264,6 +281,7 @@ def status_payload(connection):
             "version": MODEL_VERSION, "training_cutoff": TRAINING_CUTOFF,
             "feature_version": FEATURE_VERSION, "frozen": True,
         },
+        "shadow_evaluation": shadow_status,
     }
 
 

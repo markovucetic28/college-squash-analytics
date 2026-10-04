@@ -35,6 +35,8 @@ select,input[type=date] { border:1px solid #c9d0d6; border-radius:3px; backgroun
 .fixture-row { display:grid; grid-template-columns:95px minmax(280px,1fr) 90px minmax(150px,.5fr) 90px; gap:14px; align-items:center; padding:13px 10px; border-bottom:1px solid var(--line); background:white; }
 .fixture-row:hover { background:#f7f8f6; }
 .fixture-row .teams { display:grid; gap:3px; font-weight:600; }
+.fixture-row .teams span { display:flex; justify-content:space-between; gap:12px; }
+.fixture-row .teams b { font-variant-numeric:tabular-nums; }
 .fixture-row .meta,.fixture-row .venue { color:var(--muted); font-size:12px; }
 .badge { display:inline-block; border:1px solid #c8d0d6; border-radius:3px; padding:2px 6px; color:var(--muted); font-size:10px; text-transform:uppercase; }
 .badge.accent { border-color:#d8aaa2; color:var(--accent); }
@@ -60,9 +62,11 @@ tbody tr:hover { background:#f7f8f6; }
 td small { display:block; color:var(--muted); font-size:10px; margin-top:2px; }
 .position { font-family:Georgia,serif; font-size:18px; color:var(--navy); width:45px; }
 .center { text-align:center; }
-.pairing-probability { min-width:190px; }
-.pairing-probability-labels { display:flex; justify-content:space-between; font-size:11px; font-weight:bold; }
-.directional-bar { display:grid; grid-template-columns:1fr 1px 1fr; height:6px; margin-top:4px; }
+.pairing-probability { align-items:center; display:grid; grid-template-columns:45px 110px 45px; justify-content:center; min-width:216px; }
+.pairing-probability>span { font-size:11px; font-variant-numeric:tabular-nums; font-weight:bold; }
+.probability-left { text-align:right; padding-right:7px; }
+.probability-right { padding-left:7px; }
+.directional-bar { background:#edf0f2; display:grid; grid-template-columns:1fr 1px 1fr; height:6px; }
 .directional-bar>span { display:block; max-width:100%; }
 .directional-bar .bar-left { justify-self:end; }
 .directional-bar .bar-right { justify-self:start; }
@@ -77,6 +81,7 @@ td small { display:block; color:var(--muted); font-size:10px; margin-top:2px; }
 .pairing-card-players .right { align-items:flex-end; text-align:right; }
 .schedule-probability { display:grid; grid-template-columns:1fr 1fr; gap:6px; min-width:96px; font-size:11px; font-weight:bold; text-align:center; }
 .schedule-probability .muted { grid-column:1/-1; font-weight:normal; }
+.schedule-loading { color:var(--muted); font-size:11px; }
 .share-button { border:1px solid #c8d0d6; border-radius:3px; background:white; color:var(--ink); cursor:pointer; margin:-12px 0 20px; padding:7px 10px; }
 .share-button:hover { border-color:var(--accent); color:var(--accent); }
 .sort-heading { border:0; background:transparent; color:inherit; cursor:pointer; font:inherit; letter-spacing:inherit; padding:0; text-transform:inherit; }

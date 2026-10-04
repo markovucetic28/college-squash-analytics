@@ -13,10 +13,11 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from college_squash.clublocker import USER_AGENT, normalize_team_name, schedule_api_url, standings_api_url
 from college_squash.database import connect_database
-from college_squash.live_season import ensure_live_schema, save_prediction_snapshot, stable_hash, store_complete_scorecard, upsert_live_match, utc_now
+from college_squash.live_season import ensure_live_schema, insert_ratings, save_prediction_snapshot, stable_hash, store_complete_scorecard, upsert_live_match, utc_now
 from college_squash.players import API_ROOT, parse_scorecard_rows
 from college_squash.preseason import predict_current_season_matchup, predict_preseason_matchup, sync_current_rosters
 from college_squash.ratings import RATING_HISTORY_URL
+from college_squash.shadow_evaluation import save_shadow_snapshot, score_shadow_projection, shadow_context
 
 SEASON = "2026-27"
 DIVISIONS = {"men": 6376, "women": 6379}
@@ -91,8 +92,9 @@ def rating_refresh_needed(path, current_rating):
 def snapshot_upcoming(connection):
     """Store one immutable forecast per mode for fixtures in the next 14 days."""
     artifact = joblib.load(PROJECT_ROOT / "data/preseason_player_model.joblib")
+    shadow_artifact,shadow_states=shadow_context(connection)
     start = datetime.now(timezone.utc).date(); end = start + timedelta(days=14)
-    created = 0
+    production_created = shadow_created = 0
     for fixture in connection.execute(
         "SELECT * FROM live_matches WHERE status='scheduled' AND match_date BETWEEN ? AND ?",
         (start.isoformat(), end.isoformat()),
@@ -106,9 +108,15 @@ def snapshot_upcoming(connection):
             "team_one_expected_wins": float(result["team_one_expected_wins"]),
             "lineup_confidence": float(result["lineup_confidence"]),
             "pairings": result["pairings"].to_dict("records")}
-        save_prediction_snapshot(connection, fixture["source_match_id"], projection)
-        created += 1
-    return created
+        generated=utc_now()
+        save_prediction_snapshot(connection, fixture["source_match_id"], projection, generated)
+        production_created += 1
+        shadow=score_shadow_projection(connection,result,artifact=shadow_artifact,states=shadow_states)
+        shadow_created += save_shadow_snapshot(
+            connection,fixture,result,shadow,"official-rating-logistic-v1",
+            fixture["retrieved_at_utc"],generated,
+        )
+    return {"production":production_created,"shadow":shadow_created}
 
 
 def commit_database(database_path, matches, scorecards, summary):
@@ -120,9 +128,13 @@ def commit_database(database_path, matches, scorecards, summary):
     try:
         ensure_live_schema(connection); connection.execute("BEGIN")
         sync_current_rosters(connection, PROJECT_ROOT / "data/raw")
+        insert_ratings(connection,[dict(row) for row in connection.execute("""SELECT player_id,rating_date,current_rating rating,? retrieved_at_utc,source_url
+          FROM current_roster_players WHERE season=? AND current_rating IS NOT NULL""",(summary["retrieved_at_utc"],SEASON))])
         for match in matches: upsert_live_match(connection, match)
         for match_id, rows in scorecards.items(): store_complete_scorecard(connection, match_id, rows)
-        summary["prediction_snapshots_created"] = snapshot_upcoming(connection)
+        snapshots=snapshot_upcoming(connection)
+        summary["prediction_snapshots_created"] = snapshots["production"]
+        summary["shadow_snapshots_created"] = snapshots["shadow"]
         now = utc_now()
         connection.execute("INSERT INTO refresh_runs(started_at_utc,completed_at_utc,status,summary_json) VALUES (?,?,'success',?)",
                            (now, now, json.dumps(summary, sort_keys=True)))

@@ -20,3 +20,8 @@ export const probabilitySegments = (probability: number) => ({
   left: `${Math.max(0, Math.min(1, probability)) * 100}%`,
   right: `${Math.max(0, Math.min(1, 1 - probability)) * 100}%`,
 });
+
+export const probabilityAdvantage = (probability: number) => {
+  const bounded=Math.max(0,Math.min(1,probability));
+  return {side:bounded>=.5?"left" as const:"right" as const,width:`${Number((Math.abs(bounded-.5)*200).toFixed(10))}%`};
+};
