@@ -62,15 +62,12 @@ tbody tr:hover { background:#f7f8f6; }
 td small { display:block; color:var(--muted); font-size:10px; margin-top:2px; }
 .position { font-family:Georgia,serif; font-size:18px; color:var(--navy); width:45px; }
 .center { text-align:center; }
-.pairing-probability { align-items:center; display:grid; grid-template-columns:45px 110px 45px; justify-content:center; min-width:216px; }
+.pairing-probability { align-items:center; display:grid; grid-template-columns:48px 190px 48px; justify-content:center; min-width:286px; }
 .pairing-probability>span { font-size:11px; font-variant-numeric:tabular-nums; font-weight:bold; }
 .probability-left { text-align:right; padding-right:7px; }
-.probability-right { padding-left:7px; }
-.directional-bar { background:#edf0f2; display:grid; grid-template-columns:1fr 1px 1fr; height:6px; }
-.directional-bar>span { display:block; max-width:100%; }
-.directional-bar .bar-left { justify-self:end; }
-.directional-bar .bar-right { justify-self:start; }
-.directional-bar i { background:#27333c; display:block; width:1px; }
+.probability-right { padding-left:7px; text-align:left; }
+.pairing-probability-bar { background:#edf0f2; display:flex; height:8px; overflow:hidden; width:100%; }
+.pairing-probability-bar span { display:block; height:100%; }
 .mobile-pairings { display:none; }
 .pairing-card { background:white; border-top:1px solid var(--line); padding:12px 4px; }
 .pairing-card-position { color:var(--muted); font-size:10px; font-weight:bold; letter-spacing:.07em; text-transform:uppercase; }
@@ -157,5 +154,6 @@ td small { display:block; color:var(--muted); font-size:10px; margin-top:2px; }
   .lineup-editor-list select { grid-column:3/5; }
   .lineup-editor-list .text-button { grid-column:4; grid-row:1; }
   .recent-form-text { display:none; }
+  .pairing-probability { grid-template-columns:48px minmax(140px,1fr) 48px; min-width:0; width:100%; }
   .desktop-pairings { display:none; } .mobile-pairings { display:block; }
 }

@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { displayProbability, number, percent } from "@/lib/api";
-import { probabilityAdvantage, probabilitySegments, teamColor } from "@/lib/teamColors";
+import { probabilitySegments, teamColor } from "@/lib/teamColors";
 import type { Pairing, Projection } from "@/lib/types";
 import RecentFormDot from "./RecentFormDot";
 import { predictionModeExplanation } from "@/lib/presentation";
 
 function Player({id,name,forfeit}:{id:number|null;name:string;forfeit:boolean}) { if(forfeit)return <strong>Forfeit</strong>; return id?<Link href={`/player/${id}`}>{name}</Link>:<span>{name}</span>; }
 
-function ProbabilityBar({probability,teamOne,teamTwo}:{probability:number;teamOne:string;teamTwo:string}) { const advantage=probabilityAdvantage(probability); return <div className="pairing-probability" aria-label={`${teamOne} ${displayProbability(probability)}, ${teamTwo} ${displayProbability(1-probability)}`}><span className="probability-left">{displayProbability(probability)}</span><div className="directional-bar">{advantage.side==="left"&&<span className="bar-left" style={{width:advantage.width,backgroundColor:teamColor(teamOne)}}/>}<i/>{advantage.side==="right"&&<span className="bar-right" style={{width:advantage.width,backgroundColor:teamColor(teamTwo)}}/>}</div><span className="probability-right">{displayProbability(1-probability)}</span></div>; }
+function ProbabilityBar({probability,teamOne,teamTwo}:{probability:number;teamOne:string;teamTwo:string}) { const segments=probabilitySegments(probability); const label=`${teamOne} ${displayProbability(probability)}, ${teamTwo} ${displayProbability(1-probability)}`; return <div className="pairing-probability" aria-label={label} title={label}><span className="probability-left">{displayProbability(probability)}</span><div className="pairing-probability-bar"><span style={{width:segments.left,backgroundColor:teamColor(teamOne)}}/><span style={{width:segments.right,backgroundColor:teamColor(teamTwo)}}/></div><span className="probability-right">{displayProbability(1-probability)}</span></div>; }
 
 function MobilePairing({pairing,teamOne,teamTwo}:{pairing:Pairing;teamOne:string;teamTwo:string}) { return <article className="pairing-card"><div className="pairing-card-position">Position {pairing.position}</div><div className="pairing-card-players"><div><Player id={pairing.team_one_player_id} name={pairing.team_one_player} forfeit={pairing.team_one_is_forfeit}/><span>{number(pairing.team_one_rating,2)}</span><RecentFormDot form={pairing.team_one_recent_form}/></div><div className="right"><Player id={pairing.team_two_player_id} name={pairing.team_two_player} forfeit={pairing.team_two_is_forfeit}/><span>{number(pairing.team_two_rating,2)}</span><RecentFormDot form={pairing.team_two_recent_form}/></div></div><ProbabilityBar probability={pairing.team_one_probability} teamOne={teamOne} teamTwo={teamTwo}/></article>; }
 

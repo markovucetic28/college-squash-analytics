@@ -16,12 +16,8 @@ const TEAM_COLORS: Record<string, string> = {
 
 export const teamColor = (team: string) => TEAM_COLORS[team] || "#526675";
 
-export const probabilitySegments = (probability: number) => ({
-  left: `${Math.max(0, Math.min(1, probability)) * 100}%`,
-  right: `${Math.max(0, Math.min(1, 1 - probability)) * 100}%`,
-});
-
-export const probabilityAdvantage = (probability: number) => {
-  const bounded=Math.max(0,Math.min(1,probability));
-  return {side:bounded>=.5?"left" as const:"right" as const,width:`${Number((Math.abs(bounded-.5)*200).toFixed(10))}%`};
+export const probabilitySegments = (probability: number) => {
+  const left = Number((Math.max(0, Math.min(1, probability)) * 100).toFixed(10));
+  const right = Number((100-left).toFixed(10));
+  return {left: `${left}%`, right: `${right}%`};
 };
